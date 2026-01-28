@@ -16,32 +16,46 @@ function extractJSON(text: string): any {
   let jsonString = text.trim().replace(/```json/gi, '').replace(/```/g, '');
   const firstOpen = jsonString.indexOf('{');
   const lastClose = jsonString.lastIndexOf('}');
+  if (firstOpen === -1 || lastClose === -1) throw new Error("Respuesta del servidor inválida.");
   return JSON.parse(jsonString.substring(firstOpen, lastClose + 1));
 }
 
 export async function researchLocationAndDate(location: string, date: string): Promise<HistoricalScenario> {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-  // Prompt optimizado para velocidad y precisión lingüística
   const prompt = `
-    Como historiador experto y políglota de México, investiga: "${location}" ${date ? `en ${date}` : ""}.
+    Como historiador magistral de México, investiga: "${location}" ${date ? `en la fecha o época ${date}` : ""}.
     
-    INSTRUCCIONES CRÍTICAS:
-    1. LENGUAJE: Si el contexto es prehispánico o colonial temprano, el "text" del script DEBE estar en la lengua originaria correspondiente (Náhuatl, Maya, etc.) con su "translation" al español.
-    2. PERSONAJES: Identifica a 2 protagonistas reales.
-    3. GÉNERO Y VOZ: 
-       - Hombres: DEBEN usar voz 'Charon' o 'Puck'.
-       - Mujeres: DEBEN usar voz 'Kore' o 'Aoede'.
-    
+    REGLAS ESTRICTAS DE LENGUAJE (DECISIÓN BASADA EN ÉPOCA):
+    1. SI el evento es ANTES de 1521: El campo "text" DEBE estar en la lengua originaria (Náhuatl, Maya, Mixteco, etc.) y "translation" en español.
+    2. SI el evento es DESPUÉS de 1521: El campo "text" DEBE estar en ESPAÑOL DE LA ÉPOCA. Solo usa lengua originaria si el personaje es un líder indígena específico que no hablaba español.
+    3. NO uses náhuatl para personajes del siglo XIX o XX (ej. Benito Juárez, Porfirio Díaz, Zaragoza deben hablar en ESPAÑOL).
+
+    REGLAS DE IDENTIDAD Y VOZ:
+    - Identifica a 2 protagonistas históricos reales con su género correcto.
+    - HOMBRES: Usa 'Charon' o 'Puck' (Voces graves/masculinas).
+    - MUJERES: Usa 'Kore' o 'Aoede' (Voces agudas/femeninas).
+    - ASEGÚRATE: Un general o soldado masculino NUNCA debe tener voz 'Kore' o 'Aoede'.
+
     JSON:
     {
-      "context": "Contexto histórico breve y épico.",
-      "accentProfile": "Descripción del habla y atmósfera sonora.",
+      "context": "Breve descripción épica del momento.",
+      "accentProfile": "Atmósfera sonora y estilo de habla.",
       "characters": [
-        {"name": "Nombre Real", "gender": "male|female", "voice": "Charon|Kore", "visualDescription": "Retrato para óleo", "bio": "Bio corta"}
+        {
+          "name": "Nombre Real", 
+          "gender": "male|female", 
+          "voice": "Charon|Puck|Kore|Aoede", 
+          "visualDescription": "Descripción para retrato al óleo",
+          "bio": "Breve rol histórico"
+        }
       ],
       "script": [
-        {"speaker": "Nombre Real", "text": "Diálogo (priorizar lengua originaria si aplica)", "translation": "Español"}
+        {
+          "speaker": "Nombre Real", 
+          "text": "Diálogo original (Indígena solo si es < 1521, sino Español)", 
+          "translation": "Traducción al español actual"
+        }
       ]
     }
   `;
@@ -68,12 +82,14 @@ export async function researchLocationAndDate(location: string, date: string): P
 export async function generateDialogueAudio(scenario: HistoricalScenario): Promise<AudioBuffer> {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-  // Mapeo estricto para evitar confusión de género
+  // Mapeo robusto de locutores basado en los nombres de voz elegidos por el modelo
   const speakerVoiceConfigs = scenario.characters.slice(0, 2).map((char, i) => {
-    // Forzamos capitalización correcta de la voz y nombres de locutores claros
-    const voiceName = char.voice.charAt(0).toUpperCase() + char.voice.slice(1).toLowerCase();
+    // Validar nombre de voz y capitalizar
+    let voiceName = char.voice || (char.gender === 'female' ? 'Kore' : 'Charon');
+    voiceName = voiceName.charAt(0).toUpperCase() + voiceName.slice(1).toLowerCase();
+    
     return {
-      speaker: `Locutor_${i === 0 ? 'Uno' : 'Dos'}`,
+      speaker: `Actor_${i}`,
       voiceConfig: { prebuiltVoiceConfig: { voiceName } }
     };
   });
@@ -81,8 +97,7 @@ export async function generateDialogueAudio(scenario: HistoricalScenario): Promi
   let dialogueText = "";
   scenario.script.forEach(line => {
     const charIdx = scenario.characters.findIndex(c => c.name === line.speaker);
-    const speakerTag = charIdx === 1 ? "Locutor_Dos" : "Locutor_Uno";
-    // Usamos el texto original (que puede ser lengua indígena) para el TTS
+    const speakerTag = `Actor_${charIdx === -1 ? 0 : charIdx}`;
     dialogueText += `${speakerTag}: ${line.text}\n`;
   });
 
@@ -91,12 +106,19 @@ export async function generateDialogueAudio(scenario: HistoricalScenario): Promi
     contents: [{ parts: [{ text: dialogueText }] }],
     config: {
       responseModalities: [Modality.AUDIO], 
-      speechConfig: { multiSpeakerVoiceConfig: { speakerVoiceConfigs } }
+      speechConfig: { 
+        multiSpeakerVoiceConfig: { 
+          speakerVoiceConfigs: speakerVoiceConfigs.length === 2 ? speakerVoiceConfigs : [
+            ...speakerVoiceConfigs,
+            { speaker: 'Actor_Placeholder', voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } } }
+          ]
+        } 
+      }
     }
   });
 
   const base64 = response.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
-  if (!base64) throw new Error("Audio fallido.");
+  if (!base64) throw new Error("La señal de audio es demasiado débil.");
   
   const ctx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
   const buffer = await decodeAudioData(decodeBase64(base64), ctx, 24000, 1);
@@ -109,7 +131,7 @@ export async function generateCharacterAvatar(description: string): Promise<stri
   try {
     const response = await ai.models.generateContent({
       model: IMAGE_MODEL,
-      contents: { parts: [{ text: `Historical portrait, cinematic oil painting: ${description}` }] }
+      contents: { parts: [{ text: `Authentic historical oil painting portrait, professional lighting: ${description}` }] }
     });
     const part = response.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
     return part ? `data:image/png;base64,${part.inlineData.data}` : null;
