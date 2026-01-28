@@ -16,7 +16,7 @@ function extractJSON(text: string): any {
   let jsonString = text.trim().replace(/```json/gi, '').replace(/```/g, '');
   const firstOpen = jsonString.indexOf('{');
   const lastClose = jsonString.lastIndexOf('}');
-  if (firstOpen === -1 || lastClose === -1) throw new Error("Respuesta del servidor inválida.");
+  if (firstOpen === -1 || lastClose === -1) throw new Error("Error en la frecuencia temporal.");
   return JSON.parse(jsonString.substring(firstOpen, lastClose + 1));
 }
 
@@ -24,37 +24,38 @@ export async function researchLocationAndDate(location: string, date: string): P
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
   const prompt = `
-    Como historiador magistral de México, investiga: "${location}" ${date ? `en la fecha o época ${date}` : ""}.
-    
-    REGLAS ESTRICTAS DE LENGUAJE (DECISIÓN BASADA EN ÉPOCA):
-    1. SI el evento es ANTES de 1521: El campo "text" DEBE estar en la lengua originaria (Náhuatl, Maya, Mixteco, etc.) y "translation" en español.
-    2. SI el evento es DESPUÉS de 1521: El campo "text" DEBE estar en ESPAÑOL DE LA ÉPOCA. Solo usa lengua originaria si el personaje es un líder indígena específico que no hablaba español.
-    3. NO uses náhuatl para personajes del siglo XIX o XX (ej. Benito Juárez, Porfirio Díaz, Zaragoza deben hablar en ESPAÑOL).
+    ERES UN HISTORIADOR DE PRECISIÓN ABSOLUTA. Investiga: "${location}" ${date ? `en ${date}` : ""}.
 
-    REGLAS DE IDENTIDAD Y VOZ:
-    - Identifica a 2 protagonistas históricos reales con su género correcto.
-    - HOMBRES: Usa 'Charon' o 'Puck' (Voces graves/masculinas).
-    - MUJERES: Usa 'Kore' o 'Aoede' (Voces agudas/femeninas).
-    - ASEGÚRATE: Un general o soldado masculino NUNCA debe tener voz 'Kore' o 'Aoede'.
+    DIRECCIÓN LINGÜÍSTICA OBLIGATORIA:
+    1. DETERMINA EL AÑO:
+       - SI EL AÑO ES < 1521 (Época Prehispánica): El "text" DEBE ser en lengua originaria (Náhuatl, Maya, etc.) y "translation" en español.
+       - SI EL AÑO ES >= 1521 (Colonia, Independencia, Revolución, Siglo XX): El "text" DEBE SER COMPLETAMENTE EN ESPAÑOL. 
+       - PROHIBICIÓN: No uses Náhuatl para personajes como Benito Juárez, Porfirio Díaz, Zapata o soldados del siglo XIX. Ellos hablaban español.
 
-    JSON:
+    REGLAS DE GÉNERO Y VOZ:
+    - Identifica a 2 protagonistas reales.
+    - GÉNERO FEMENINO: Usa obligatoriamente voz 'Kore' o 'Aoede'.
+    - GÉNERO MASCULINO: Usa obligatoriamente voz 'Charon' o 'Puck'.
+    - ERROR CRÍTICO A EVITAR: No asignes voces femeninas a generales, soldados o líderes masculinos.
+
+    ESTRUCTURA JSON:
     {
-      "context": "Breve descripción épica del momento.",
-      "accentProfile": "Atmósfera sonora y estilo de habla.",
+      "context": "Contexto histórico breve.",
+      "accentProfile": "Estilo de habla.",
       "characters": [
         {
-          "name": "Nombre Real", 
+          "name": "Nombre", 
           "gender": "male|female", 
           "voice": "Charon|Puck|Kore|Aoede", 
-          "visualDescription": "Descripción para retrato al óleo",
-          "bio": "Breve rol histórico"
+          "visualDescription": "Retrato",
+          "bio": "Bio"
         }
       ],
       "script": [
         {
-          "speaker": "Nombre Real", 
-          "text": "Diálogo original (Indígena solo si es < 1521, sino Español)", 
-          "translation": "Traducción al español actual"
+          "speaker": "Nombre", 
+          "text": "Diálogo (Indígena SOLO si es antes de 1521, sino ESPAÑOL)", 
+          "translation": "Español actual"
         }
       ]
     }
@@ -82,11 +83,16 @@ export async function researchLocationAndDate(location: string, date: string): P
 export async function generateDialogueAudio(scenario: HistoricalScenario): Promise<AudioBuffer> {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-  // Mapeo robusto de locutores basado en los nombres de voz elegidos por el modelo
+  // Mapeo estricto basado en la decisión del modelo
   const speakerVoiceConfigs = scenario.characters.slice(0, 2).map((char, i) => {
-    // Validar nombre de voz y capitalizar
-    let voiceName = char.voice || (char.gender === 'female' ? 'Kore' : 'Charon');
-    voiceName = voiceName.charAt(0).toUpperCase() + voiceName.slice(1).toLowerCase();
+    // FIX: Normalize to lowercase to match the VoiceName union type and avoid comparison errors
+    // with capitalized strings. char.voice might contain capitalized values from the LLM.
+    let vName: any = char.voice.toLowerCase();
+    if (char.gender === 'female' && (vName === 'charon' || vName === 'puck')) vName = 'kore';
+    if (char.gender === 'male' && (vName === 'kore' || vName === 'aoede')) vName = 'charon';
+    
+    // Capitalize for the API requirement (e.g., 'kore' -> 'Kore')
+    const voiceName = (vName as string).charAt(0).toUpperCase() + (vName as string).slice(1).toLowerCase();
     
     return {
       speaker: `Actor_${i}`,
@@ -106,19 +112,12 @@ export async function generateDialogueAudio(scenario: HistoricalScenario): Promi
     contents: [{ parts: [{ text: dialogueText }] }],
     config: {
       responseModalities: [Modality.AUDIO], 
-      speechConfig: { 
-        multiSpeakerVoiceConfig: { 
-          speakerVoiceConfigs: speakerVoiceConfigs.length === 2 ? speakerVoiceConfigs : [
-            ...speakerVoiceConfigs,
-            { speaker: 'Actor_Placeholder', voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } } }
-          ]
-        } 
-      }
+      speechConfig: { multiSpeakerVoiceConfig: { speakerVoiceConfigs } }
     }
   });
 
   const base64 = response.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
-  if (!base64) throw new Error("La señal de audio es demasiado débil.");
+  if (!base64) throw new Error("Audio no disponible.");
   
   const ctx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
   const buffer = await decodeAudioData(decodeBase64(base64), ctx, 24000, 1);
@@ -131,7 +130,7 @@ export async function generateCharacterAvatar(description: string): Promise<stri
   try {
     const response = await ai.models.generateContent({
       model: IMAGE_MODEL,
-      contents: { parts: [{ text: `Authentic historical oil painting portrait, professional lighting: ${description}` }] }
+      contents: { parts: [{ text: `Cinematic historical portrait, oil painting style, hyper-realistic face: ${description}` }] }
     });
     const part = response.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
     return part ? `data:image/png;base64,${part.inlineData.data}` : null;
