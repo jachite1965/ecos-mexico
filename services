@@ -1,0 +1,117 @@
+
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+*/
+
+import { GoogleGenAI, GenerateContentResponse, Modality } from "@google/genai";
+import { HistoricalScenario, Source } from "../types";
+import { decodeBase64, decodeAudioData } from "../utils/audioUtils";
+
+const FLASH_MODEL = 'gemini-3-flash-preview'; 
+const TTS_MODEL = 'gemini-2.5-flash-preview-tts';
+const IMAGE_MODEL = 'gemini-2.5-flash-image';
+
+function extractJSON(text: string): any {
+  let jsonString = text.trim().replace(/```json/gi, '').replace(/```/g, '');
+  const firstOpen = jsonString.indexOf('{');
+  const lastClose = jsonString.lastIndexOf('}');
+  return JSON.parse(jsonString.substring(firstOpen, lastClose + 1));
+}
+
+export async function researchLocationAndDate(location: string, date: string): Promise<HistoricalScenario> {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+  // Prompt optimizado para velocidad y precisión lingüística
+  const prompt = `
+    Como historiador experto y políglota de México, investiga: "${location}" ${date ? `en ${date}` : ""}.
+    
+    INSTRUCCIONES CRÍTICAS:
+    1. LENGUAJE: Si el contexto es prehispánico o colonial temprano, el "text" del script DEBE estar en la lengua originaria correspondiente (Náhuatl, Maya, etc.) con su "translation" al español.
+    2. PERSONAJES: Identifica a 2 protagonistas reales.
+    3. GÉNERO Y VOZ: 
+       - Hombres: DEBEN usar voz 'Charon' o 'Puck'.
+       - Mujeres: DEBEN usar voz 'Kore' o 'Aoede'.
+    
+    JSON:
+    {
+      "context": "Contexto histórico breve y épico.",
+      "accentProfile": "Descripción del habla y atmósfera sonora.",
+      "characters": [
+        {"name": "Nombre Real", "gender": "male|female", "voice": "Charon|Kore", "visualDescription": "Retrato para óleo", "bio": "Bio corta"}
+      ],
+      "script": [
+        {"speaker": "Nombre Real", "text": "Diálogo (priorizar lengua originaria si aplica)", "translation": "Español"}
+      ]
+    }
+  `;
+
+  const response = await ai.models.generateContent({
+    model: FLASH_MODEL,
+    contents: prompt,
+    config: { 
+      tools: [{ googleSearch: {} }],
+      responseMimeType: "application/json"
+    }
+  });
+
+  const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
+  const sources = groundingChunks
+    .filter((c: any) => c.web?.uri)
+    .map((c: any) => ({ title: c.web.title || "Fuente", uri: c.web.uri }))
+    .slice(0, 3);
+
+  const data = extractJSON(response.text);
+  return { ...data, sources };
+}
+
+export async function generateDialogueAudio(scenario: HistoricalScenario): Promise<AudioBuffer> {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+  // Mapeo estricto para evitar confusión de género
+  const speakerVoiceConfigs = scenario.characters.slice(0, 2).map((char, i) => {
+    // Forzamos capitalización correcta de la voz y nombres de locutores claros
+    const voiceName = char.voice.charAt(0).toUpperCase() + char.voice.slice(1).toLowerCase();
+    return {
+      speaker: `Locutor_${i === 0 ? 'Uno' : 'Dos'}`,
+      voiceConfig: { prebuiltVoiceConfig: { voiceName } }
+    };
+  });
+
+  let dialogueText = "";
+  scenario.script.forEach(line => {
+    const charIdx = scenario.characters.findIndex(c => c.name === line.speaker);
+    const speakerTag = charIdx === 1 ? "Locutor_Dos" : "Locutor_Uno";
+    // Usamos el texto original (que puede ser lengua indígena) para el TTS
+    dialogueText += `${speakerTag}: ${line.text}\n`;
+  });
+
+  const response = await ai.models.generateContent({
+    model: TTS_MODEL, 
+    contents: [{ parts: [{ text: dialogueText }] }],
+    config: {
+      responseModalities: [Modality.AUDIO], 
+      speechConfig: { multiSpeakerVoiceConfig: { speakerVoiceConfigs } }
+    }
+  });
+
+  const base64 = response.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
+  if (!base64) throw new Error("Audio fallido.");
+  
+  const ctx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+  const buffer = await decodeAudioData(decodeBase64(base64), ctx, 24000, 1);
+  await ctx.close();
+  return buffer;
+}
+
+export async function generateCharacterAvatar(description: string): Promise<string | null> {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  try {
+    const response = await ai.models.generateContent({
+      model: IMAGE_MODEL,
+      contents: { parts: [{ text: `Historical portrait, cinematic oil painting: ${description}` }] }
+    });
+    const part = response.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+    return part ? `data:image/png;base64,${part.inlineData.data}` : null;
+  } catch { return null; }
+}
