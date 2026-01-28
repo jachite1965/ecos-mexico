@@ -1,0 +1,155 @@
+
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+*/
+
+import React, { useEffect, useRef, useState } from 'react';
+import { PlayIcon, PauseIcon, RotateCcwIcon, UserIcon, Loader2Icon } from 'lucide-react';
+import { HistoricalScenario } from '../types';
+
+interface ScenarioDisplayProps {
+  scenario: HistoricalScenario;
+  audioBuffer: AudioBuffer | null;
+  isRegenerating?: boolean;
+}
+
+export const ScenarioDisplay: React.FC<ScenarioDisplayProps> = ({ scenario, audioBuffer, isRegenerating }) => {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const sourceNodeRef = useRef<AudioBufferSourceNode | null>(null);
+  const startTimeRef = useRef<number>(0);
+  const pauseTimeRef = useRef<number>(0);
+
+  useEffect(() => {
+    return () => stopAudio();
+  }, [audioBuffer]);
+
+  const initAudioContext = () => {
+    if (!audioContextRef.current) {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      audioContextRef.current = new AudioContextClass();
+    }
+  };
+
+  const playAudio = () => {
+    if (!audioBuffer) return;
+    initAudioContext();
+    const ctx = audioContextRef.current!;
+    if (ctx.state === 'suspended') ctx.resume();
+
+    const source = ctx.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(ctx.destination);
+    
+    const offset = pauseTimeRef.current % audioBuffer.duration;
+    source.start(0, offset);
+    startTimeRef.current = ctx.currentTime - offset;
+    sourceNodeRef.current = source;
+    
+    source.onended = () => {
+      if (ctx.currentTime - startTimeRef.current >= audioBuffer.duration - 0.1) {
+        setIsPlaying(false);
+        pauseTimeRef.current = 0;
+      }
+    };
+    setIsPlaying(true);
+  };
+
+  const stopAudio = () => {
+    if (sourceNodeRef.current) {
+      try { sourceNodeRef.current.stop(); } catch (e) {}
+      sourceNodeRef.current = null;
+    }
+    if (audioContextRef.current) {
+      pauseTimeRef.current = audioContextRef.current.currentTime - startTimeRef.current;
+    }
+    setIsPlaying(false);
+  };
+
+  const togglePlay = () => isPlaying ? stopAudio() : playAudio();
+
+  return (
+    <div className="w-full space-y-10">
+      {/* Hero Section */}
+      <div className="bg-white dark:bg-slate-800/80 border border-stone-200 dark:border-slate-700 rounded-[3rem] p-8 md:p-12 shadow-2xl relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-1.5 bg-red-700"></div>
+        <div className="max-w-4xl space-y-6">
+          <h2 className="font-serif text-3xl md:text-5xl text-red-900 dark:text-red-50 font-black tracking-tight leading-none uppercase">
+            {scenario.context.split('.')[0]}
+          </h2>
+          <p className="text-stone-700 dark:text-slate-300 leading-relaxed text-lg md:text-xl font-medium italic border-l-4 border-red-700/30 pl-6">
+            {scenario.context}
+          </p>
+        </div>
+
+        {/* Characters Row */}
+        <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 gap-6 pt-8 border-t border-stone-100 dark:border-slate-700">
+           {scenario.characters.map((char, idx) => (
+             <div key={idx} className="flex items-center gap-5 bg-stone-50/50 dark:bg-slate-900/30 p-5 rounded-3xl border border-stone-100 dark:border-slate-800 transition-all hover:border-red-700/20">
+                <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl overflow-hidden bg-stone-100 dark:bg-slate-700 flex-shrink-0 ring-4 ring-white dark:ring-slate-800 shadow-lg">
+                    {char.avatarUrl ? (
+                      <img src={char.avatarUrl} alt={char.name} className="w-full h-full object-cover animate-in fade-in" />
+                    ) : (
+                      <div className="w-full h-full flex flex-col items-center justify-center gap-1">
+                        <Loader2Icon size={20} className="animate-spin text-stone-300" />
+                        <span className="text-[8px] font-black uppercase text-stone-400">Pintando</span>
+                      </div>
+                    )}
+                </div>
+                <div>
+                    <h4 className="font-serif text-lg text-red-800 dark:text-red-200 font-bold leading-none">{char.name}</h4>
+                    <p className="text-[10px] text-stone-500 font-bold uppercase mt-1 tracking-wider">{char.bio}</p>
+                </div>
+             </div>
+           ))}
+        </div>
+      </div>
+
+      {/* Audio Controls */}
+      <div className="bg-red-700/5 dark:bg-red-950/10 border-2 border-dashed border-red-700/20 rounded-[3rem] p-8 flex flex-col items-center gap-6">
+        <div className="flex items-center gap-8">
+            <button onClick={() => { stopAudio(); pauseTimeRef.current = 0; }} className="p-3 text-stone-400 hover:text-red-700 transition-all"><RotateCcwIcon size={24} /></button>
+            <button
+                onClick={togglePlay}
+                disabled={!audioBuffer}
+                className={`w-24 h-24 rounded-full flex items-center justify-center transition-all active:scale-95 shadow-2xl ${!audioBuffer ? 'bg-stone-200 text-stone-400' : 'bg-red-700 text-white hover:bg-red-600 shadow-red-900/40'}`}
+            >
+                {!audioBuffer ? <Loader2Icon className="animate-spin" size={32} /> : isPlaying ? <PauseIcon size={40} fill="currentColor" /> : <PlayIcon size={40} fill="currentColor" className="ml-1" />}
+            </button>
+            <div className="w-10"></div>
+        </div>
+        <p className="text-[10px] font-black text-red-700 dark:text-red-500 tracking-[0.4em] uppercase">
+            {isPlaying ? 'Escuchando la frecuencia del pasado' : !audioBuffer ? 'Sintonizando audio histórico...' : 'Eco listo para reproducir'}
+        </p>
+      </div>
+
+      {/* Transcript */}
+      <div className="space-y-12 px-4">
+        {scenario.script.map((line, idx) => (
+          <div key={idx} className={`flex flex-col ${idx % 2 === 0 ? 'items-start' : 'items-end'}`}>
+            <div className={`flex gap-6 max-w-[90%] md:max-w-[80%] ${idx % 2 === 0 ? 'flex-row' : 'flex-row-reverse text-right'}`}>
+               <div className="flex-shrink-0 mt-2">
+                  {(() => {
+                      const char = scenario.characters.find(c => c.name === line.speaker) || scenario.characters[idx % 2];
+                      return char?.avatarUrl ? (
+                          <img src={char.avatarUrl} className="w-12 h-12 md:w-16 md:h-16 rounded-2xl object-cover shadow-xl border-2 border-white dark:border-slate-800" />
+                      ) : (
+                           <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-stone-200 flex items-center justify-center font-black text-stone-400">?</div>
+                      );
+                  })()}
+               </div>
+               <div className="space-y-2">
+                  <span className="text-[10px] text-red-700 dark:text-red-500 font-black tracking-widest uppercase">{line.speaker}</span>
+                  <p className="font-serif text-2xl md:text-4xl text-stone-800 dark:text-slate-100 leading-tight italic">"{line.text}"</p>
+                  <p className="text-sm md:text-lg text-stone-500 dark:text-slate-400 font-medium pl-6 border-l-2 border-stone-200 dark:border-slate-800 transition-all">
+                    {line.translation}
+                  </p>
+               </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
