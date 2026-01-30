@@ -1,24 +1,33 @@
+/* 
+  Los estilos de Tailwind se cargan vía CDN en el HTML para máxima compatibilidad. 
+  Aquí solo incluimos utilidades personalizadas.
+*/
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-@layer base {
-  body {
-    @apply antialiased selection:bg-red-200 selection:text-red-900 bg-[#fcfaf7] dark:bg-[#060a13];
-    font-family: 'Inter', sans-serif;
-  }
-  h1, h2, h3, h4, .font-serif {
-    font-family: 'Cinzel', serif;
-  }
+:root {
+  color-scheme: light dark;
 }
 
-.glass {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+body {
+  overflow-x: hidden;
 }
 
-.dark .glass {
-  background: rgba(13, 19, 33, 0.7);
+.custom-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scroll::-webkit-scrollbar-thumb {
+  background: rgba(185, 28, 28, 0.3);
+  border-radius: 10px;
+}
+
+/* Animaciones suaves */
+.fade-in {
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
