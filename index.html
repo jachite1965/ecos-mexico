@@ -1,31 +1,59 @@
+
 <!DOCTYPE html>
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Ecos de México | ET&T Historical Experience</title>
-    <meta name="theme-color" content="#060a13" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    
+    <!-- Fuentes de Google -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CDN como respaldo y configuración -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+              serif: ['Cinzel', 'serif'],
+            },
+          }
+        }
+      }
+    </script>
+    
+    <style>
+      body { 
+        margin: 0; 
+        padding: 0; 
+        scroll-behavior: smooth; 
+        background-color: #fcfaf7;
+      }
+      .dark body { background-color: #060a13; }
+      #root { min-height: 100vh; }
+    </style>
   <script type="importmap">
 {
   "imports": {
-    "react": "https://esm.sh/react@^19.2.4",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
     "react/": "https://esm.sh/react@^19.2.4/",
+    "react": "https://esm.sh/react@^19.2.4",
     "lucide-react": "https://esm.sh/lucide-react@^0.563.0",
     "@google/genai": "https://esm.sh/@google/genai@^1.38.0",
     "vite": "https://esm.sh/vite@^7.3.1",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
     "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2"
   }
 }
 </script>
 </head>
-  <body class="bg-stone-50 dark:bg-[#0a0f1d]">
+  <body class="bg-[#fcfaf7] dark:bg-[#060a13]">
     <div id="root"></div>
+    <!-- Vite inyectará el script aquí automáticamente en el despliegue -->
     <script type="module" src="/index.tsx"></script>
   </body>
 </html>
