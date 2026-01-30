@@ -1,7 +1,6 @@
-/* 
-  Los estilos de Tailwind se cargan vía CDN en el HTML para máxima compatibilidad. 
-  Aquí solo incluimos utilidades personalizadas.
-*/
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 :root {
   color-scheme: light dark;
@@ -9,6 +8,11 @@
 
 body {
   overflow-x: hidden;
+  font-family: 'Inter', sans-serif;
+}
+
+h1, h2, h3, h4, .font-serif {
+  font-family: 'Cinzel', serif;
 }
 
 .custom-scroll::-webkit-scrollbar {
@@ -20,6 +24,15 @@ body {
 .custom-scroll::-webkit-scrollbar-thumb {
   background: rgba(185, 28, 28, 0.3);
   border-radius: 10px;
+}
+
+.glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.dark .glass {
+  background: rgba(13, 19, 33, 0.7);
 }
 
 /* Animaciones suaves */
