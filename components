@@ -4,152 +4,114 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 
-import React, { useEffect, useRef, useState } from 'react';
-import { PlayIcon, PauseIcon, RotateCcwIcon, UserIcon, Loader2Icon } from 'lucide-react';
-import { HistoricalScenario } from '../types';
+import React, { useState } from 'react';
+import { SparklesIcon, SearchIcon, GlobeIcon, Loader2Icon } from 'lucide-react';
 
-interface ScenarioDisplayProps {
-  scenario: HistoricalScenario;
-  audioBuffer: AudioBuffer | null;
-  isRegenerating?: boolean;
+interface InputFormProps {
+  onSubmit: (location: string, language: string, generateImages: boolean) => void;
+  isLoading: boolean;
 }
 
-export const ScenarioDisplay: React.FC<ScenarioDisplayProps> = ({ scenario, audioBuffer, isRegenerating }) => {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const sourceNodeRef = useRef<AudioBufferSourceNode | null>(null);
-  const startTimeRef = useRef<number>(0);
-  const pauseTimeRef = useRef<number>(0);
+const LANGUAGES = [
+  { code: 'es', label: 'Español 🇲🇽', prompt: 'Spanish (Mexican style)' },
+  { code: 'en', label: 'English 🇺🇸', prompt: 'English' },
+  { code: 'fr', label: 'Français 🇫🇷', prompt: 'French' },
+  { code: 'de', label: 'Deutsch 🇩🇪', prompt: 'German' },
+  { code: 'it', label: 'Italiano 🇮🇹', prompt: 'Italian' },
+  { code: 'ja', label: '日本語 🇯🇵', prompt: 'Japanese' },
+  { code: 'pt', label: 'Português 🇧🇷', prompt: 'Portuguese' },
+];
 
-  useEffect(() => {
-    return () => stopAudio();
-  }, [audioBuffer]);
+const PRESETS = [
+  { label: "Tlatelolco", location: 'Mercado de Tlatelolco' },
+  { label: "Palenque", location: 'Zona Arqueológica de Palenque' },
+  { label: "Batalla Puebla", location: 'Fuertes de Loreto' },
+  { label: "Revolución", location: 'Monumento a la Revolución' },
+];
 
-  const initAudioContext = () => {
-    if (!audioContextRef.current) {
-      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-      audioContextRef.current = new AudioContextClass();
-    }
+export const InputForm: React.FC<InputFormProps> = ({ onSubmit, isLoading }) => {
+  const [location, setLocation] = useState('');
+  const [language, setLanguage] = useState('es');
+  const [generateImages, setGenerateImages] = useState(true);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const selectedLang = LANGUAGES.find(l => l.code === language)?.prompt || 'Spanish';
+    onSubmit(location, selectedLang, generateImages);
   };
-
-  const playAudio = () => {
-    if (!audioBuffer) return;
-    initAudioContext();
-    const ctx = audioContextRef.current!;
-    if (ctx.state === 'suspended') ctx.resume();
-
-    const source = ctx.createBufferSource();
-    source.buffer = audioBuffer;
-    source.connect(ctx.destination);
-    
-    const offset = pauseTimeRef.current % audioBuffer.duration;
-    source.start(0, offset);
-    startTimeRef.current = ctx.currentTime - offset;
-    sourceNodeRef.current = source;
-    
-    source.onended = () => {
-      if (ctx.currentTime - startTimeRef.current >= audioBuffer.duration - 0.1) {
-        setIsPlaying(false);
-        pauseTimeRef.current = 0;
-      }
-    };
-    setIsPlaying(true);
-  };
-
-  const stopAudio = () => {
-    if (sourceNodeRef.current) {
-      try { sourceNodeRef.current.stop(); } catch (e) {}
-      sourceNodeRef.current = null;
-    }
-    if (audioContextRef.current) {
-      pauseTimeRef.current = audioContextRef.current.currentTime - startTimeRef.current;
-    }
-    setIsPlaying(false);
-  };
-
-  const togglePlay = () => isPlaying ? stopAudio() : playAudio();
 
   return (
-    <div className="w-full space-y-10">
-      {/* Hero Section */}
-      <div className="bg-white dark:bg-slate-800/80 border border-stone-200 dark:border-slate-700 rounded-[3rem] p-8 md:p-12 shadow-2xl relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-1.5 bg-red-700"></div>
-        <div className="max-w-4xl space-y-6">
-          <h2 className="font-serif text-3xl md:text-5xl text-red-900 dark:text-red-50 font-black tracking-tight leading-none uppercase">
-            {scenario.context.split('.')[0]}
-          </h2>
-          <p className="text-stone-700 dark:text-slate-300 leading-relaxed text-lg md:text-xl font-medium italic border-l-4 border-red-700/30 pl-6">
-            {scenario.context}
-          </p>
-        </div>
-
-        {/* Characters Row */}
-        <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 gap-6 pt-8 border-t border-stone-100 dark:border-slate-700">
-           {scenario.characters.map((char, idx) => (
-             <div key={idx} className="flex items-center gap-5 bg-stone-50/50 dark:bg-slate-900/30 p-5 rounded-3xl border border-stone-100 dark:border-slate-800 transition-all hover:border-red-700/20">
-                <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl overflow-hidden bg-stone-100 dark:bg-slate-700 flex-shrink-0 ring-4 ring-white dark:ring-slate-800 shadow-lg">
-                    {char.avatarUrl ? (
-                      <img src={char.avatarUrl} alt={char.name} className="w-full h-full object-cover animate-in fade-in" />
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center gap-1">
-                        <Loader2Icon size={20} className="animate-spin text-stone-300" />
-                        <span className="text-[8px] font-black uppercase text-stone-400">Pintando</span>
-                      </div>
-                    )}
-                </div>
-                <div>
-                    <h4 className="font-serif text-lg text-red-800 dark:text-red-200 font-bold leading-none">{char.name}</h4>
-                    <p className="text-[10px] text-stone-500 font-bold uppercase mt-1 tracking-wider">{char.bio}</p>
-                </div>
-             </div>
-           ))}
-        </div>
-      </div>
-
-      {/* Audio Controls */}
-      <div className="bg-red-700/5 dark:bg-red-950/10 border-2 border-dashed border-red-700/20 rounded-[3rem] p-8 flex flex-col items-center gap-6">
-        <div className="flex items-center gap-8">
-            <button onClick={() => { stopAudio(); pauseTimeRef.current = 0; }} className="p-3 text-stone-400 hover:text-red-700 transition-all"><RotateCcwIcon size={24} /></button>
-            <button
-                onClick={togglePlay}
-                disabled={!audioBuffer}
-                className={`w-24 h-24 rounded-full flex items-center justify-center transition-all active:scale-95 shadow-2xl ${!audioBuffer ? 'bg-stone-200 text-stone-400' : 'bg-red-700 text-white hover:bg-red-600 shadow-red-900/40'}`}
-            >
-                {!audioBuffer ? <Loader2Icon className="animate-spin" size={32} /> : isPlaying ? <PauseIcon size={40} fill="currentColor" /> : <PlayIcon size={40} fill="currentColor" className="ml-1" />}
-            </button>
-            <div className="w-10"></div>
-        </div>
-        <p className="text-[10px] font-black text-red-700 dark:text-red-500 tracking-[0.4em] uppercase">
-            {isPlaying ? 'Escuchando la frecuencia del pasado' : !audioBuffer ? 'Sintonizando audio histórico...' : 'Eco listo para reproducir'}
-        </p>
-      </div>
-
-      {/* Transcript */}
-      <div className="space-y-12 px-4">
-        {scenario.script.map((line, idx) => (
-          <div key={idx} className={`flex flex-col ${idx % 2 === 0 ? 'items-start' : 'items-end'}`}>
-            <div className={`flex gap-6 max-w-[90%] md:max-w-[80%] ${idx % 2 === 0 ? 'flex-row' : 'flex-row-reverse text-right'}`}>
-               <div className="flex-shrink-0 mt-2">
-                  {(() => {
-                      const char = scenario.characters.find(c => c.name === line.speaker) || scenario.characters[idx % 2];
-                      return char?.avatarUrl ? (
-                          <img src={char.avatarUrl} className="w-12 h-12 md:w-16 md:h-16 rounded-2xl object-cover shadow-xl border-2 border-white dark:border-slate-800" />
-                      ) : (
-                           <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-stone-200 flex items-center justify-center font-black text-stone-400">?</div>
-                      );
-                  })()}
-               </div>
-               <div className="space-y-2">
-                  <span className="text-[10px] text-red-700 dark:text-red-500 font-black tracking-widest uppercase">{line.speaker}</span>
-                  <p className="font-serif text-2xl md:text-4xl text-stone-800 dark:text-slate-100 leading-tight italic">"{line.text}"</p>
-                  <p className="text-sm md:text-lg text-stone-500 dark:text-slate-400 font-medium pl-6 border-l-2 border-stone-200 dark:border-slate-800 transition-all">
-                    {line.translation}
-                  </p>
-               </div>
+    <div className="w-full">
+      <form onSubmit={handleSubmit} className="space-y-6 bg-white dark:bg-slate-800/80 p-6 md:p-10 rounded-[2.5rem] border border-stone-200 dark:border-slate-700 shadow-2xl backdrop-blur-md">
+        <div className="space-y-5">
+          <div className="space-y-2">
+            <label className="text-[10px] md:text-xs font-black text-red-700 dark:text-red-500 uppercase tracking-widest px-1">Lugar o Suceso de México</label>
+            <div className="relative group">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none z-10 text-stone-400 group-focus-within:text-red-600 transition-colors">
+                <SearchIcon size={20} />
+              </div>
+              <input
+                type="text"
+                required
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                placeholder="Ej. Uxmal, El Zócalo, Grito de Dolores..."
+                className="w-full bg-stone-50 dark:bg-slate-900 border-none rounded-2xl py-4 md:py-5 pl-12 md:pl-14 pr-4 text-base md:text-lg focus:ring-2 focus:ring-red-600 transition-all outline-none shadow-inner text-stone-800 dark:text-white"
+              />
             </div>
           </div>
-        ))}
-      </div>
+
+          <div className="space-y-2">
+            <label className="text-[10px] md:text-xs font-black text-red-700 dark:text-red-500 uppercase tracking-widest px-1">Idioma de la Experiencia</label>
+            <div className="relative group">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none z-10 text-stone-400 group-focus-within:text-red-600 transition-colors">
+                <GlobeIcon size={20} />
+              </div>
+              <select
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+                className="w-full bg-stone-50 dark:bg-slate-900 border-none rounded-2xl py-4 md:py-5 pl-12 md:pl-14 pr-4 text-base md:text-lg focus:ring-2 focus:ring-red-600 transition-all outline-none cursor-pointer shadow-inner text-stone-800 dark:text-white appearance-none"
+              >
+                {LANGUAGES.map(lang => (
+                  <option key={lang.code} value={lang.code}>{lang.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <label className="flex items-center gap-3 cursor-pointer group py-2 px-1">
+            <input 
+              type="checkbox"
+              checked={generateImages}
+              onChange={e => setGenerateImages(e.target.checked)}
+              className="w-5 h-5 rounded border-stone-300 text-red-600 focus:ring-red-600 cursor-pointer"
+            />
+            <span className="text-xs md:text-sm font-medium text-stone-600 dark:text-slate-400 group-hover:text-red-700 transition-colors">Generar retratos de época</span>
+          </label>
+        </div>
+
+        <button
+          type="submit"
+          disabled={isLoading || !location}
+          className="w-full py-4 md:py-5 rounded-2xl font-black text-lg md:text-xl bg-red-700 hover:bg-red-600 text-white shadow-xl shadow-red-900/20 flex items-center justify-center gap-3 transition-all active:scale-[0.98] disabled:opacity-50"
+        >
+          {isLoading ? <Loader2Icon className="animate-spin" size={24} /> : <SparklesIcon size={24} />}
+          {isLoading ? 'SINTONIZANDO...' : 'ESCUCHAR EL PASADO'}
+        </button>
+        
+        <div className="flex flex-wrap justify-center gap-2 pt-2">
+            {PRESETS.map((p, i) => (
+                <button
+                    key={i}
+                    type="button"
+                    onClick={() => setLocation(p.location)}
+                    className="text-[9px] md:text-[10px] px-3 py-1.5 bg-stone-100 dark:bg-slate-800 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-full border border-stone-200 dark:border-slate-700 transition-all text-stone-600 dark:text-stone-300 font-bold"
+                >
+                    {p.label}
+                </button>
+            ))}
+        </div>
+      </form>
     </div>
   );
 };
