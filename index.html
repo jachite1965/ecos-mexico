@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
     
-    <!-- Tailwind CDN como respaldo y configuración -->
+    <!-- Tailwind CSS CDN (Garantiza que los estilos carguen siempre) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -26,34 +26,42 @@
         }
       }
     </script>
-    
+
     <style>
+      /* Estilos base para evitar el salto de contenido */
       body { 
         margin: 0; 
         padding: 0; 
-        scroll-behavior: smooth; 
         background-color: #fcfaf7;
       }
       .dark body { background-color: #060a13; }
-      #root { min-height: 100vh; }
+      
+      .glass {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+      }
+      .dark .glass {
+        background: rgba(13, 19, 33, 0.7);
+      }
     </style>
   <script type="importmap">
 {
   "imports": {
-    "react/": "https://esm.sh/react@^19.2.4/",
     "react": "https://esm.sh/react@^19.2.4",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "react/": "https://esm.sh/react@^19.2.4/",
     "lucide-react": "https://esm.sh/lucide-react@^0.563.0",
     "@google/genai": "https://esm.sh/@google/genai@^1.38.0",
     "vite": "https://esm.sh/vite@^7.3.1",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
     "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2"
   }
 }
 </script>
 </head>
-  <body class="bg-[#fcfaf7] dark:bg-[#060a13]">
+  <body class="bg-[#fcfaf7] dark:bg-[#060a13] antialiased">
     <div id="root"></div>
-    <!-- Vite inyectará el script aquí automáticamente en el despliegue -->
+    <!-- Entrada principal de la aplicación -->
     <script type="module" src="/index.tsx"></script>
   </body>
 </html>
