@@ -20,42 +20,42 @@ function extractJSON(text: string): any {
   return JSON.parse(jsonString.substring(firstOpen, lastClose + 1));
 }
 
-export async function researchLocationAndDate(location: string, date: string): Promise<HistoricalScenario> {
+export async function researchLocationAndLanguage(location: string, targetLanguage: string): Promise<HistoricalScenario> {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
   const prompt = `
-    ERES UN HISTORIADOR DE PRECISIÓN ABSOLUTA. Investiga: "${location}" ${date ? `en ${date}` : ""}.
+    ERES UN HISTORIADOR MULTILINGÜE. Investiga el lugar: "${location}".
+    EL USUARIO QUIERE VIVIR ESTA EXPERIENCIA EN: ${targetLanguage}.
 
-    DIRECCIÓN LINGÜÍSTICA OBLIGATORIA:
-    1. DETERMINA EL AÑO:
-       - SI EL AÑO ES < 1521 (Época Prehispánica): El "text" DEBE ser en lengua originaria (Náhuatl, Maya, etc.) y "translation" en español.
-       - SI EL AÑO ES >= 1521 (Colonia, Independencia, Revolución, Siglo XX): El "text" DEBE SER COMPLETAMENTE EN ESPAÑOL. 
-       - PROHIBICIÓN: No uses Náhuatl para personajes como Benito Juárez, Porfirio Díaz, Zapata o soldados del siglo XIX. Ellos hablaban español.
-
+    1. DETECTA LA ÉPOCA MÁS RELEVANTE de este lugar automáticamente.
+    
+    REGLAS DE IDIOMA Y AUDIO:
+    - TODO EL CONTENIDO (context, script text, translation) DEBE ESTAR EN ${targetLanguage}.
+    - EXCEPCIÓN DE AUTENTICIDAD: Si el lugar es prehispánico (antes de 1521), los personajes pueden iniciar su diálogo con un saludo corto en su lengua originaria (ej. "Pialli", "B'a'ax ka wa'alik") pero el resto del texto DEBE continuar en ${targetLanguage} para que el usuario entienda.
+    
     REGLAS DE GÉNERO Y VOZ:
     - Identifica a 2 protagonistas reales.
-    - GÉNERO FEMENINO: Usa obligatoriamente voz 'Kore' o 'Aoede'.
-    - GÉNERO MASCULINO: Usa obligatoriamente voz 'Charon' o 'Puck'.
-    - ERROR CRÍTICO A EVITAR: No asignes voces femeninas a generales, soldados o líderes masculinos.
+    - FEMENINO: Voz 'Kore' o 'Aoede'.
+    - MASCULINO: Voz 'Charon' o 'Puck'.
 
     ESTRUCTURA JSON:
     {
-      "context": "Contexto histórico breve.",
-      "accentProfile": "Estilo de habla.",
+      "context": "Contexto histórico en ${targetLanguage}.",
+      "accentProfile": "Cómo debe sonar en ${targetLanguage} con acento mexicano histórico.",
       "characters": [
         {
-          "name": "Nombre", 
+          "name": "Nombre Real", 
           "gender": "male|female", 
           "voice": "Charon|Puck|Kore|Aoede", 
-          "visualDescription": "Retrato",
-          "bio": "Bio"
+          "visualDescription": "Descripción visual para retrato",
+          "bio": "Breve biografía en ${targetLanguage}"
         }
       ],
       "script": [
         {
           "speaker": "Nombre", 
-          "text": "Diálogo (Indígena SOLO si es antes de 1521, sino ESPAÑOL)", 
-          "translation": "Español actual"
+          "text": "Diálogo principal en ${targetLanguage} (con toque ancestral si es prehispánico)", 
+          "translation": "Explicación breve del matiz cultural en ${targetLanguage}"
         }
       ]
     }
@@ -83,15 +83,10 @@ export async function researchLocationAndDate(location: string, date: string): P
 export async function generateDialogueAudio(scenario: HistoricalScenario): Promise<AudioBuffer> {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-  // Mapeo estricto basado en la decisión del modelo
   const speakerVoiceConfigs = scenario.characters.slice(0, 2).map((char, i) => {
-    // FIX: Normalize to lowercase to match the VoiceName union type and avoid comparison errors
-    // with capitalized strings. char.voice might contain capitalized values from the LLM.
     let vName: any = char.voice.toLowerCase();
     if (char.gender === 'female' && (vName === 'charon' || vName === 'puck')) vName = 'kore';
     if (char.gender === 'male' && (vName === 'kore' || vName === 'aoede')) vName = 'charon';
-    
-    // Capitalize for the API requirement (e.g., 'kore' -> 'Kore')
     const voiceName = (vName as string).charAt(0).toUpperCase() + (vName as string).slice(1).toLowerCase();
     
     return {
@@ -130,7 +125,7 @@ export async function generateCharacterAvatar(description: string): Promise<stri
   try {
     const response = await ai.models.generateContent({
       model: IMAGE_MODEL,
-      contents: { parts: [{ text: `Cinematic historical portrait, oil painting style, hyper-realistic face: ${description}` }] }
+      contents: { parts: [{ text: `Authentic historical oil painting, detailed face, appropriate period clothing: ${description}` }] }
     });
     const part = response.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
     return part ? `data:image/png;base64,${part.inlineData.data}` : null;
