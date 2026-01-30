@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="es">
   <head>
@@ -6,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Ecos de México | ET&T Historical Experience</title>
     
-    <!-- Fuentes de Google -->
+    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
     
-    <!-- Tailwind CSS CDN (Garantiza que los estilos carguen siempre) -->
+    <!-- Tailwind CSS via CDN - La forma más compatible para este entorno -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -28,14 +27,20 @@
     </script>
 
     <style>
-      /* Estilos base para evitar el salto de contenido */
+      /* Estilos base críticos */
       body { 
         margin: 0; 
         padding: 0; 
         background-color: #fcfaf7;
+        font-family: 'Inter', sans-serif;
+        -webkit-font-smoothing: antialiased;
       }
       .dark body { background-color: #060a13; }
       
+      h1, h2, h3, h4, .font-serif {
+        font-family: 'Cinzel', serif;
+      }
+
       .glass {
         background: rgba(255, 255, 255, 0.7);
         backdrop-filter: blur(10px);
@@ -59,9 +64,9 @@
 }
 </script>
 </head>
-  <body class="bg-[#fcfaf7] dark:bg-[#060a13] antialiased">
+  <body class="bg-[#fcfaf7] dark:bg-[#060a13]">
     <div id="root"></div>
-    <!-- Entrada principal de la aplicación -->
+    <!-- Vite inyectará aquí los módulos necesarios -->
     <script type="module" src="/index.tsx"></script>
   </body>
 </html>
