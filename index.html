@@ -10,14 +10,49 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
     
-    <style>
-      /* Estilo crítico para evitar el flash blanco antes de cargar React */
-      body { 
-        margin: 0; 
-        padding: 0; 
-        background-color: #fcfaf7;
+    <!-- Tailwind CSS CDN para garantizar que los estilos funcionen en cualquier entorno -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+              serif: ['Cinzel', 'serif'],
+            },
+          }
+        }
       }
-      .dark body { background-color: #060a13; }
+    </script>
+
+    <style type="text/css">
+      /* Estilos globales y utilidades personalizadas */
+      @layer base {
+        body {
+          @apply antialiased text-stone-900 bg-[#fcfaf7] transition-colors duration-500;
+        }
+        .dark body {
+          @apply text-stone-100 bg-[#060a13];
+        }
+      }
+      
+      .glass {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+      }
+      .dark .glass {
+        background: rgba(13, 19, 33, 0.7);
+      }
+
+      .fade-in {
+        animation: fadeIn 0.8s ease-out forwards;
+      }
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
     </style>
   <script type="importmap">
 {
@@ -33,9 +68,9 @@
 }
 </script>
 </head>
-  <body class="bg-[#fcfaf7] dark:bg-[#060a13] antialiased">
+  <body>
     <div id="root"></div>
-    <!-- Punto de entrada único para Vite -->
+    <!-- Punto de entrada para la lógica de React -->
     <script type="module" src="/index.tsx"></script>
   </body>
 </html>
