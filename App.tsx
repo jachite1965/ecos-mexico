@@ -4,7 +4,7 @@ import {
   SparklesIcon, Loader2Icon, MoonIcon, SunIcon, 
   MapPinIcon, HistoryIcon, AlertCircleIcon
 } from 'lucide-react';
-import { researchLocationAndDate, generateDialogueAudio, generateCharacterAvatar } from './services/geminiService';
+import { researchLocationAndLanguage, generateDialogueAudio, generateCharacterAvatar } from './services/geminiService';
 import { HistoricalScenario } from './types';
 import { InputForm } from './components/InputForm';
 import { ScenarioDisplay } from './components/ScenarioDisplay';
@@ -16,19 +16,19 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [darkMode, setDarkMode] = useState(false);
 
-  const handleSearch = async (loc: string, date: string, withImages: boolean) => {
+  const handleSearch = async (loc: string, language: string, withImages: boolean) => {
     setLoading('busy');
     setError(null);
     setScenario(null);
     setAudio(null);
     
     try {
-      // Paso 1: Investigación rápida (unificada)
-      const data = await researchLocationAndDate(loc, date);
+      // Paso 1: Investigación por lugar e idioma
+      const data = await researchLocationAndLanguage(loc, language);
       setScenario(data);
       setLoading('media');
 
-      // Paso 2: Carga de medios en paralelo (no bloqueante para la UI)
+      // Paso 2: Carga de medios
       const audioPromise = generateDialogueAudio(data).then(setAudio);
       
       const imagePromises = withImages ? data.characters.map(async (c, i) => {
@@ -47,7 +47,7 @@ export default function App() {
       setLoading('idle');
     } catch (e: any) {
       console.error(e);
-      setError("La frecuencia histórica es inestable en este momento. Intenta de nuevo.");
+      setError("La frecuencia histórica es inestable. Asegúrate de que el lugar sea válido en México.");
       setLoading('idle');
     }
   };
@@ -69,7 +69,7 @@ export default function App() {
           <div className="flex flex-col items-center gap-12 py-12 animate-in fade-in">
             <div className="text-center space-y-4">
               <span className="text-red-700 font-black text-[10px] uppercase tracking-[0.4em]">Sintonizador de Patrimonio Nacional</span>
-              <h2 className="text-4xl md:text-6xl font-serif font-black leading-tight">¿Qué momento deseas sintonizar?</h2>
+              <h2 className="text-4xl md:text-6xl font-serif font-black leading-tight">¿Qué lugar deseas sintonizar?</h2>
             </div>
             <InputForm onSubmit={handleSearch} isLoading={false} />
           </div>
@@ -79,8 +79,8 @@ export default function App() {
           <div className="flex flex-col items-center justify-center py-32 space-y-8 animate-pulse">
             <div className="w-20 h-20 border-4 border-red-700/10 border-t-red-700 animate-spin rounded-full"></div>
             <div className="text-center">
-              <p className="font-serif font-black text-2xl uppercase tracking-widest">Consultando Archivos...</p>
-              <p className="text-stone-400 text-xs mt-2 uppercase tracking-widest font-bold">Buscando fuentes verídicas</p>
+              <p className="font-serif font-black text-2xl uppercase tracking-widest">Localizando en el tiempo...</p>
+              <p className="text-stone-400 text-xs mt-2 uppercase tracking-widest font-bold">Traduciendo frecuencias históricas</p>
             </div>
           </div>
         )}
