@@ -10,45 +10,14 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
     
-    <!-- Tailwind CSS via CDN - La forma más compatible para este entorno -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        darkMode: 'class',
-        theme: {
-          extend: {
-            fontFamily: {
-              sans: ['Inter', 'sans-serif'],
-              serif: ['Cinzel', 'serif'],
-            },
-          }
-        }
-      }
-    </script>
-
     <style>
-      /* Estilos base críticos */
+      /* Estilo de carga crítico para evitar que la pantalla se vea blanca al inicio */
       body { 
         margin: 0; 
         padding: 0; 
         background-color: #fcfaf7;
-        font-family: 'Inter', sans-serif;
-        -webkit-font-smoothing: antialiased;
       }
       .dark body { background-color: #060a13; }
-      
-      h1, h2, h3, h4, .font-serif {
-        font-family: 'Cinzel', serif;
-      }
-
-      .glass {
-        background: rgba(255, 255, 255, 0.7);
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-      }
-      .dark .glass {
-        background: rgba(13, 19, 33, 0.7);
-      }
     </style>
   <script type="importmap">
 {
@@ -64,9 +33,9 @@
 }
 </script>
 </head>
-  <body class="bg-[#fcfaf7] dark:bg-[#060a13]">
+  <body class="bg-[#fcfaf7] dark:bg-[#060a13] antialiased">
     <div id="root"></div>
-    <!-- Vite inyectará aquí los módulos necesarios -->
+    <!-- Vite detectará este script y empaquetará todo automáticamente para Vercel -->
     <script type="module" src="/index.tsx"></script>
   </body>
 </html>
