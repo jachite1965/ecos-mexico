@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="es">
   <head>
@@ -10,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
     
-    <!-- Tailwind CSS CDN para garantizar que los estilos funcionen en cualquier entorno -->
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -26,51 +27,48 @@
       }
     </script>
 
-    <style type="text/css">
-      /* Estilos globales y utilidades personalizadas */
+    <!-- CRITICAL: type="text/tailwindcss" allows @apply to work in the browser via CDN -->
+    <style type="text/tailwindcss">
       @layer base {
-        body {
-          @apply antialiased text-stone-900 bg-[#fcfaf7] transition-colors duration-500;
+        body { 
+          @apply antialiased text-stone-900 bg-[#fcfaf7] transition-colors duration-500 overflow-x-hidden; 
         }
-        .dark body {
-          @apply text-stone-100 bg-[#060a13];
+        .dark body { 
+          @apply text-stone-100 bg-[#060a13]; 
         }
       }
       
-      .glass {
-        background: rgba(255, 255, 255, 0.7);
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
+      .glass { 
+        @apply bg-white/70 backdrop-blur-md;
       }
-      .dark .glass {
-        background: rgba(13, 19, 33, 0.7);
+      .dark .glass { 
+        @apply bg-[#0d1321]/70;
       }
+      
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-      .fade-in {
-        animation: fadeIn 0.8s ease-out forwards;
-      }
-      @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(20px); }
-        to { opacity: 1; transform: translateY(0); }
+      /* Estilo para las tarjetas históricas */
+      .historical-card {
+        @apply bg-white dark:bg-slate-800/80 border border-stone-200 dark:border-slate-700 rounded-[2.5rem] shadow-xl overflow-hidden;
       }
     </style>
   <script type="importmap">
 {
   "imports": {
-    "react": "https://esm.sh/react@^19.2.4",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
     "react/": "https://esm.sh/react@^19.2.4/",
-    "lucide-react": "https://esm.sh/lucide-react@^0.563.0",
-    "@google/genai": "https://esm.sh/@google/genai@^1.38.0",
+    "react": "https://esm.sh/react@^19.2.4",
     "vite": "https://esm.sh/vite@^7.3.1",
-    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2"
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "lucide-react": "https://esm.sh/lucide-react@^0.563.0",
+    "@google/genai": "https://esm.sh/@google/genai@^1.41.0",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.4"
   }
 }
 </script>
 </head>
   <body>
     <div id="root"></div>
-    <!-- Punto de entrada para la lógica de React -->
     <script type="module" src="/index.tsx"></script>
   </body>
 </html>
